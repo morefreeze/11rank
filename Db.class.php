@@ -1,23 +1,39 @@
 <?php
 class Db{
-	static private $db_conf = array(
-		'dota' => array(
-			'host' => '127.0.0.1',
-			'port' => '3306',
-			'user' => 'dota',
-			'pass' => 'atod',
-			),
-		);
-	static private $db_pool = array();
-	static public function getDBConnect($dbname){
-		if (isset(self::$db_pool[$dbname])){
-			return self::$db_pool[$dbname];
-		}
-		$conf = self::$db_conf[$dbname];
-		$db = new mysqli($conf['host'], $conf['user'], $conf['pass'],
+	public function __construct($dbname, $conf){
+		$this->_db = new mysqli($conf['host'], $conf['user'], $conf['pass'],
 			$dbname, $conf['port']);
-		$db->set_charset('utf8');
-		self::$db_pool[$dbname] = $db;
-		return $db;
+		$this->_db->set_charset('utf8');
 	}
+
+	public function __get($property) {
+    	if (property_exists($this, $property)) {
+      		return $this->$property;
+    	}
+  	}
+
+	public function query($sql){
+		$ret = array();
+		if (null == $this->_db){
+			return false;
+		}
+		$this->_last_sql = $sql;
+		if ("" == $sql){
+			return $ret;
+		}
+		$res = $this->_db->query($sql);
+		if (is_bool($res)){
+			return $res;
+		}
+		while($tmp = $res->fetch_assoc()){
+			$ret[] = $tmp;
+		}
+		return $ret;
+	}
+
+	public function escape_string($str = ""){
+		return $this->_db->escape_string($str);
+	}
+	private $_db = null;
+	private $_last_sql = "";
 }

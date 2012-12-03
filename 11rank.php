@@ -1,5 +1,5 @@
 <?php
-require_once ("Db.class.php");
+require_once ("DbTools.class.php");
 
 //getCookie();
 //$user_info = getUserInfoFrom11('还我K神');
@@ -7,9 +7,12 @@ require_once ("Db.class.php");
 //updateUserInfo($user_info);
 //updateAllUser();
 
+// user_info
+// id, uname, score, rank, win, lose, update_time
+
 // update all user 11 score and info
 function updateAllUser(){
-	$conn = Db::getDBConnect('dota');
+	$conn = DbTools::getDBConnect('dota');
 	$time = time();
 	do{
 		$res = $conn->query("SELECT uname FROM dota.user_info WHERE update_time < $time ".
@@ -17,14 +20,11 @@ function updateAllUser(){
 		if (false === $res){
 			return false;
 		}
-		$cols = array();
-		while ($tmp = $res->fetch_assoc()){
-			$cols[] = $tmp;
-		}
-		if (empty($cols)){
+
+		if (empty($res)){
 			break;
 		}
-		foreach ($cols as $user){
+		foreach ($res as $user){
 			$user_info = getUserInfoFrom11($user['uname']);
 			updateUserInfo($user_info);
 		}
@@ -36,23 +36,19 @@ function updateAllUser(){
 
 // update A user info with 11 rank (throght getUserInfoFrom11)
 function updateUserInfo($user_info){
-	$conn = Db::getDBConnect('dota');
+	$conn = DbTools::getDBConnect('dota');
 	$res = $conn->query("SELECT id,score,rank FROM dota.user_info ".
 		"WHERE uname LIKE '".$conn->escape_string($user_info['user'])."'");
 	if (false === $res){
 
 	}
-	$cols = array();
-	while ($tmp = $res->fetch_assoc()){
-		$cols[] = $tmp;
-	}
 	extract($user_info);
 	$rank = $rank == "-" ? 0 : $rank;
 	$time = time();
 	// update
-	if (!empty($cols)){
+	if (!empty($res)){
 		$conn->query("UPDATE dota.user_info SET score = $score, rank = $rank,".
-			"win = $win, lose = $lose, update_time = $time WHERE id = ". $cols[0]['id']);
+			"win = $win, lose = $lose, update_time = $time WHERE id = ". $res[0]['id']);
 	}
 	// insert
 	else{
@@ -62,6 +58,17 @@ function updateUserInfo($user_info){
 		$conn->query($sql);
 	}
 	return true;
+}
+
+// get 11 rank from db with local uid
+function getUserInfoFromDb($id){
+	$conn = DbTools::getDBConnect('dota');
+	$res = $conn->query("SELECT id,uname,score,rank,win,lose FROM dota.user_info ".
+		"WHERE id = $id");
+	if (false === $res){
+
+	}
+	return $res[0];
 }
 
 // get 11 rank with A user name
