@@ -10,6 +10,34 @@ require_once ("DbTools.class.php");
 // user_info
 // id, uname, score, rank, win, lose, update_time
 
+// add a user watched
+function watchNewUser($uid, $new_user){
+	$conn = DbTools::getDBConnect('dota');
+	$time = time();
+	$res = $conn->query("SELECT id FROM dota.user_info WHERE uname LIKE '".
+		$conn->escape_string($new_user)."'");
+	if (empty($res)){
+		$user_info = getUserInfoFrom11($new_user);
+		$rank_id = updateUserInfo($user_info);
+	}
+	else{
+		$rank_id = $res[0]['id'];
+	}
+	$res = $conn->query("SELECT ulist FROM dota.user WHERE uid = $uid");
+	$ulist = array();
+	if ($res[0]['ulist'] != ""){
+		$ulist = explode(',', $res[0]['ulist']);
+	}
+	if (!in_array($rank_id, $ulist)){
+		$ulist[] = $rank_id;
+		$conn->query("UPDATE dota.user SET ulist = '".implode(',', $ulist)."', ".
+			"update_time = $time WHERE uid = $uid");
+	}
+	else{
+		return false;
+	}
+	return true;
+}
 // update all user 11 score and info
 function updateAllUser(){
 	$conn = DbTools::getDBConnect('dota');
@@ -48,16 +76,20 @@ function updateUserInfo($user_info){
 	// update
 	if (!empty($res)){
 		$conn->query("UPDATE dota.user_info SET score = $score, rank = $rank,".
-			"win = $win, lose = $lose, update_time = $time WHERE id = ". $res[0]['id']);
+			"win = $win, lose = $lose, user_url = '".$conn->escape_string($user_url)."', ".
+			"update_time = $time WHERE id = ". $res[0]['id']);
+		$rank_id = $res[0]['id'];
 	}
 	// insert
 	else{
 		$sql = "INSERT INTO dota.user_info SET uname = '".$conn->escape_string($user)."', score = $score,".
-			"rank = $rank, win = $win, lose = $lose, update_time = $time";
+			"rank = $rank, win = $win, lose = $lose, user_url = '".$conn->escape_string($user_url)."', ".
+			"update_time = $time";
 		//var_dump($sql);
 		$conn->query($sql);
+		$rank_id = $conn->insert_id;
 	}
-	return true;
+	return $rank_id;
 }
 
 // get 11 rank from db with local uid
@@ -117,8 +149,9 @@ function getUserInfoFrom11($user = 'morefreeze'){
 		preg_match("/td\s+class=\"con1\">\s*<strong[^>]*>([\-0-9])[^<]*<\/\s*strong/s", $res, $out);
 		//preg_match("/div\s+class=\"user\">\s*<a.*>(\w+)\s*<\/a>/", $res, $out);
 		$ret['rank'] = $out[1];
-		preg_match("/div\s+class=\"user\">.+?>(.+?)\s+<\/a>/s", $res, $out);
-		$ret['user'] = $out[1];
+		preg_match("/div\s+class=\"user\">.+?href=\"(.+)\">(.+?)\s+<\/a>/s", $res, $out);
+		$ret['user_url'] = "http://".$rank_url['host']."/".$out[1];
+		$ret['user'] = $out[2];
 		preg_match("/span\s+class=\"red\"[^>]*>(\d+)/", $res, $out);
 		$ret['score'] = $out[1];
 		preg_match("/span\s+class=\"orange\"[^>]*>(\d+)/", $res, $out);

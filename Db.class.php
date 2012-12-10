@@ -7,6 +7,7 @@ class Db{
 	}
 
 	public function __get($property) {
+		$property = "_".$property;
     	if (property_exists($this, $property)) {
       		return $this->$property;
     	}
@@ -22,6 +23,7 @@ class Db{
 			return $ret;
 		}
 		$res = $this->_db->query($sql);
+		$this->_insert_id = $this->_db->insert_id;
 		if (is_bool($res)){
 			return $res;
 		}
@@ -36,4 +38,5 @@ class Db{
 	}
 	private $_db = null;
 	private $_last_sql = "";
+	private $_insert_id = 0;
 }
