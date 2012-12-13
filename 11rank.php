@@ -6,6 +6,7 @@ require_once ("DbTools.class.php");
 //var_dump($user_info);
 //updateUserInfo($user_info);
 //updateAllUser();
+//get11LastUpdateTime();
 
 // user_info
 // id, uname, score, rank, win, lose, update_time
@@ -18,7 +19,8 @@ function watchNewUser($uid, $new_user){
 		$conn->escape_string($new_user)."'");
 	if (empty($res)){
 		$user_info = getUserInfoFrom11($new_user);
-		$rank_id = updateUserInfo($user_info);
+		$ret = updateUserInfo($user_info);
+		$rank_id = $ret['rank_id'];
 	}
 	else{
 		$rank_id = $res[0]['id'];
@@ -41,7 +43,7 @@ function watchNewUser($uid, $new_user){
 // update all user 11 score and info
 function updateAllUser(){
 	$conn = DbTools::getDBConnect('dota');
-	$time = time();
+	$time = get11LastUpdateTime();
 	do{
 		$res = $conn->query("SELECT uname FROM dota.user_info WHERE update_time < $time ".
 			"LIMIT 100");
@@ -54,15 +56,16 @@ function updateAllUser(){
 		}
 		foreach ($res as $user){
 			$user_info = getUserInfoFrom11($user['uname']);
-			updateUserInfo($user_info);
+			$ret = updateUserInfo($user_info);
 		}
-		break;
+		//break;
 	}while(1);
 	
 	return true;
 }
 
 // update A user info with 11 rank (throght getUserInfoFrom11)
+// return array('rank_id', 'trend')
 function updateUserInfo($user_info){
 	$conn = DbTools::getDBConnect('dota');
 	$res = $conn->query("SELECT id,score,rank FROM dota.user_info ".
@@ -75,28 +78,50 @@ function updateUserInfo($user_info){
 	$time = time();
 	// update
 	if (!empty($res)){
+		if ($score > $res[0]['score']){
+			$trend = 1;
+		}
+		elseif($score < $res[0]['score']){
+			$trend = -1;
+		}
+		else{
+			$trend = 0;
+		}
 		$conn->query("UPDATE dota.user_info SET score = $score, rank = $rank,".
 			"win = $win, lose = $lose, user_url = '".$conn->escape_string($user_url)."', ".
-			"update_time = $time WHERE id = ". $res[0]['id']);
+			"trend = $trend, update_time = $time WHERE id = ". $res[0]['id']);
 		$rank_id = $res[0]['id'];
 	}
 	// insert
 	else{
+		$trend = 0;
 		$sql = "INSERT INTO dota.user_info SET uname = '".$conn->escape_string($user)."', score = $score,".
 			"rank = $rank, win = $win, lose = $lose, user_url = '".$conn->escape_string($user_url)."', ".
-			"update_time = $time";
+			"trend = $trend, update_time = $time";
 		//var_dump($sql);
 		$conn->query($sql);
 		$rank_id = $conn->insert_id;
 	}
-	return $rank_id;
+	$ret = array('rank_id' => $rank_id, 
+		'score' => $score,
+		'rank' => $rank,
+		'win' => $win,
+		'lose' => $lose,
+		'trend' => $trend);
+	return $ret;
 }
 
 // get 11 rank from db with local uid
 function getUserInfoFromDb($id){
 	$conn = DbTools::getDBConnect('dota');
-	$res = $conn->query("SELECT id,uname,score,rank,win,lose FROM dota.user_info ".
-		"WHERE id = $id");
+	if (isset($trend)){
+		$sql_part = " AND trend = $trend";
+	}
+	else{
+		$sql_part = "";
+	}
+	$res = $conn->query("SELECT id,uname,score,rank,win,lose,trend FROM dota.user_info ".
+		"WHERE id = $id".$sql_part);
 	if (false === $res){
 
 	}
@@ -164,6 +189,16 @@ function getUserInfoFrom11($user = 'morefreeze'){
 		return $ret;
 	}
 	return false;
+}
+function get11LastUpdateTime(){
+	$h = date('H');
+	if ($h < 6){
+		$ret = strtotime('yesterday') + 6 * 60 * 60;
+	}
+	else{
+		$ret = strtotime('today') + 6 * 60 * 60;	
+	}
+	return $ret;
 }
 
 function getCookie(){

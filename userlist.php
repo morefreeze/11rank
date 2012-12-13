@@ -8,6 +8,7 @@ session_start();
 if ($_SESSION['uid'] > 0){
 	$uid = $_SESSION['uid'];
 	$conn = DbTools::getDbConnect('dota');
+	updateAllUser();
 	$res = $conn->query("SELECT ulist FROM user WHERE uid = $uid");
 	$ulist = explode(',', $res[0]['ulist']);
 	$user_infos = array();
