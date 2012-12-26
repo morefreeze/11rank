@@ -21,7 +21,7 @@ if(isset($_POST['username'], $_POST['password1'])){
 <!doctype html public "-//w3c//dtd xhtml 1.0 transitional//en" "http://www.w3.org/tr/xhtml1/dtd/xhtml1-transitional.dtd">
 <html xmlns="http://www.111cn.net/1999/xhtml">
 <head>
-<meta http-equiv="content-type" content="text/html; charset=gb2312" />
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <title></title>
 <link rel="stylesheet" type="text/css教程" href="css/reg_log.css" />
 
